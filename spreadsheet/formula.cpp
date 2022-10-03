@@ -1,1 +1,110 @@
-/* —Ä–∞–∑–º–µ—Å—Ç–∏—Ç–µ –∑–¥–µ—Å—å —Å–≤–æ–π –∫–æ–¥ */
+#include "formula.h"
+#include "FormulaAST.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <sstream>
+
+using namespace std::literals;
+
+std::ostream& operator<<(std::ostream& output, FormulaError fe) {
+    return output << "#DIV/0!";
+}
+
+double GetDoubleFrom(const std::string& str)
+{
+    double value = 0;
+    if (!str.empty())
+    {
+        std::istringstream in(str);
+        if (!(in >> value) || !in.eof())
+        {
+            throw FormulaError(FormulaError::Category::Value);
+        }
+    }
+    return value;
+}
+
+double GetDoubleFrom(double value)
+{
+    return value;
+}
+
+double GetDoubleFrom(FormulaError error)
+{
+    throw FormulaError(error);
+}
+
+double GetCellValue(const CellInterface* cell)
+{
+    if (!cell) return 0;
+    return std::visit( [](const auto& value) { return GetDoubleFrom(value); }, cell->GetValue() );
+}
+
+//namespace {
+    class Formula : public FormulaInterface {
+    public:
+        // –Â‡ÎËÁÛÈÚÂ ÒÎÂ‰Û˛˘ËÂ ÏÂÚÓ‰˚:
+        explicit Formula(std::string expression)
+            try
+                : ast_(ParseFormulaAST(expression))
+            {
+            }
+            catch (const std::exception& exc)
+            {
+                throw FormulaException(exc.what());
+            }
+
+        Value Evaluate(const SheetInterface& sheet) const override
+        {
+            try
+            {
+                auto lambda = [&sheet](Position position) -> double
+                {
+                    if (!position.IsValid())
+                    {
+                        throw FormulaError(FormulaError::Category::Ref);
+                    }
+                    const auto* cell = sheet.GetCell(position);
+                    return GetCellValue(cell);
+                };
+
+                return ast_.Execute(lambda);
+            }
+            catch (const FormulaError& fe)
+            {
+                return fe;
+            }
+        }
+
+        std::string GetExpression() const override
+        {
+            std::ostringstream out;
+            ast_.PrintFormula(out);
+            return out.str();
+        }
+
+        std::vector<Position> GetReferencedCells() const override
+        {
+            std::vector<Position> cells;
+            for (auto cell : ast_.GetCells())
+            {
+                if (cell.IsValid())
+                {
+                    cells.push_back(cell);
+                }
+            }
+            auto it = std::unique(cells.begin(), cells.end());
+            cells.resize(it - cells.begin());
+            return cells;
+        }
+
+    private:
+        FormulaAST ast_;
+    };
+//}  // namespace
+
+std::unique_ptr<FormulaInterface> ParseFormula(std::string expression) {
+    return std::make_unique<Formula>(std::move(expression));
+}
