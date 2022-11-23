@@ -13,7 +13,7 @@ Cell::EmptyImpl::EmptyImpl() {}
 Cell::Value Cell::EmptyImpl::GetValue() const
 {
     return { "" };
-}//
+}
 
 std::string Cell::EmptyImpl::GetText() const
 {
@@ -68,7 +68,7 @@ Cell::Value Cell::FormulaImpl::GetValue() const
     {
         return { std::get<FormulaError>(val) };
     }
-}//*/
+}
 
 std::vector<Position> Cell::FormulaImpl::GetReferencedCells() const
 {
@@ -96,7 +96,7 @@ void Cell::Set(std::string text)
     else
     {
         impl = std::make_unique<TextImpl>(text);
-    }//*/
+    }
 
     
     if (HasCircularReferences(*impl))

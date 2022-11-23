@@ -58,7 +58,7 @@ private:
         std::unique_ptr<FormulaInterface> formula_;
         Sheet& sheet_;
         Value val_;
-    };//*/
+    };
 
 private:
     bool HasCircularReferences(Impl& impl);
